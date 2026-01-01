@@ -1,0 +1,11 @@
+{
+  "name": "محلل أسهم تداول",
+  "short_name": "تداول",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#1E40AF",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": []
+}
