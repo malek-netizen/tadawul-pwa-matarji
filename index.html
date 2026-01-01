@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#1E40AF" />
+  <title>محلل أسهم تداول</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>محلل أسهم تداول</h1>
+      <p>أداة تعليمية لتحليل سهم السوق السعودي عبر API</p>
+    </header>
+
+    <main class="card">
+      <label for="ticker">رمز السهم (مثال: 1120.SR)</label>
+      <div class="row">
+        <input id="ticker" placeholder="1120.SR" autocomplete="off" inputmode="text" />
+        <button id="btn">تحليل</button>
+      </div>
+
+      <div id="status" class="status info">جاهز</div>
+
+      <section id="result" class="result hidden">
+        <div class="pill" id="pill">—</div>
+
+        <div class="grid">
+          <div class="kv">
+            <div class="k">الثقة</div>
+            <div class="v" id="confidence">—</div>
+          </div>
+
+          <div class="kv">
+            <div class="k">سعر الدخول</div>
+            <div class="v" id="entry">—</div>
+          </div>
+
+          <div class="kv">
+            <div class="k">جني الربح</div>
+            <div class="v" id="tp">—</div>
+          </div>
+
+          <div class="kv">
+            <div class="k">إيقاف الخسارة</div>
+            <div class="v" id="sl">—</div>
+          </div>
+
+          <div class="kv full">
+            <div class="k">السبب</div>
+            <div class="v" id="reason">—</div>
+          </div>
+
+          <div class="kv full">
+            <div class="k">آخر إغلاق</div>
+            <div class="v" id="lastClose">—</div>
+          </div>
+        </div>
+
+        <details class="raw">
+          <summary>عرض JSON الخام</summary>
+          <pre id="rawJson">{}</pre>
+        </details>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="warn">
+        <strong>تنبيه تعليمي:</strong>
+        هذه الأداة لأغراض تعليمية فقط وليست توصية استثمارية. قد تختلف النتائج عن الواقع.
+      </div>
+    </footer>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
