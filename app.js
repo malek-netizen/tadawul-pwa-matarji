@@ -1,9 +1,11 @@
-const API_BASE = "https://tadawul-mvp-api.onrender.com/predict?ticker=";
+const API_BASE = "https://tadawul-mvp-api.onrender.com";
 
+// عناصر الواجهة
 const elTicker = document.getElementById("ticker");
 const elBtn = document.getElementById("btn");
-const elStatus = document.getElementById("status");
+const elTop10Btn = document.getElementById("btnTop10");
 
+const elStatus = document.getElementById("status");
 const elResult = document.getElementById("result");
 const elPill = document.getElementById("pill");
 const elConf = document.getElementById("confidence");
@@ -11,103 +13,118 @@ const elEntry = document.getElementById("entry");
 const elTP = document.getElementById("tp");
 const elSL = document.getElementById("sl");
 const elReason = document.getElementById("reason");
-const elLastClose = document.getElementById("lastClose");
+const elLastClose = document.getElementById("lastclose");
 const elRaw = document.getElementById("rawJson");
 
-function setStatus(type, text){
+// أدوات مساعدة
+function setStatus(type, text) {
   elStatus.className = `status ${type}`;
   elStatus.textContent = text;
 }
 
-function setPill(rec){
+function fmtSAR(x) {
+  if (x === null || x === undefined || isNaN(x)) return "-";
+  return `${Number(x).toFixed(2)} SAR`;
+}
+
+function setPill(rec) {
   elPill.className = "pill";
-  if(rec === "BUY"){ elPill.classList.add("buy"); elPill.textContent = "شراء (BUY)"; }
-  else if(rec === "SELL"){ elPill.classList.add("sell"); elPill.textContent = "بيع (SELL)"; }
-  else { elPill.classList.add("no"); elPill.textContent = "لا صفقة (NO_TRADE)"; }
+  if (rec === "BUY") {
+    elPill.classList.add("buy");
+    elPill.textContent = "BUY";
+  } else {
+    elPill.classList.add("no");
+    elPill.textContent = "NO TRADE";
+  }
 }
 
-function fmtSAR(x){
-  if(x === null || x === undefined || Number.isNaN(x)) return "—";
-  const n = Number(x);
-  if(!Number.isFinite(n)) return "—";
-  return `${n.toFixed(3)} ر.س`;
-}
-
-function fmtPct(x){
-  if(x === null || x === undefined || Number.isNaN(x)) return "—";
-  const n = Number(x);
-  if(!Number.isFinite(n)) return "—";
-  return `${Math.round(n * 100)}%`;
-}
-
-async function analyze(){
-  const ticker = (elTicker.value || "").trim().toUpperCase();
-
-  if(!ticker){
-    setStatus("warn", "الرجاء إدخال رمز السهم مثل: 1120.SR");
-    elResult.classList.add("hidden");
+// -------------------------------
+// تحليل سهم واحد
+// -------------------------------
+elBtn.onclick = async () => {
+  let ticker = (elTicker.value || "").trim().toUpperCase();
+  if (!ticker) {
+    setStatus("err", "أدخل رمز السهم");
     return;
   }
 
-  if(!ticker.endsWith(".SR")){
-    setStatus("warn", "صيغة الرمز غير صحيحة. استخدم مثل: 1120.SR");
-    elResult.classList.add("hidden");
-    return;
-  }
+  // بدون .SR → نضيفها تلقائيًا
+  if (/^\d+$/.test(ticker)) ticker = ticker + ".SR";
 
-  elBtn.disabled = true;
-  setStatus("info", "جاري الاتصال بالـ API وتحليل السهم...");
-  elResult.classList.add("hidden");
+  setStatus("info", "جاري التحليل...");
+  elResult.style.display = "block";
 
-  try{
-    const url = API_BASE + encodeURIComponent(ticker);
-    const res = await fetch(url, { method:"GET", headers:{ "Accept":"application/json" } });
-
-    if(!res.ok){
-      throw new Error(`HTTP ${res.status}`);
-    }
-
+  try {
+    const res = await fetch(`${API_BASE}/predict?ticker=${ticker}`);
     const data = await res.json();
 
-    // أخطاء مزود البيانات
-    if(data.error){
-      setStatus("err", `خطأ: ${data.error}`);
-      elBtn.disabled = false;
-      return;
-    }
-    if(data.reason && String(data.reason).toLowerCase().includes("no price data")){
-      setStatus("err", "لم يتم جلب بيانات السعر. جرّب رمزًا آخر مثل 1120.SR أو انتظر قليلًا.");
-      elBtn.disabled = false;
+    if (data.error) {
+      setStatus("err", data.error);
       return;
     }
 
-    setStatus("ok", "تم التحليل بنجاح ✅");
-    setPill(data.recommendation || "NO_TRADE");
-
-    elConf.textContent = fmtPct(data.confidence);
+    setStatus("ok", "تم التحليل");
+    setPill(data.recommendation);
+    elConf.textContent = Math.round(data.confidence * 100) + "%";
     elEntry.textContent = fmtSAR(data.entry);
     elTP.textContent = fmtSAR(data.take_profit);
     elSL.textContent = fmtSAR(data.stop_loss);
-    elReason.textContent = data.reason ? String(data.reason) : "—";
+    elReason.textContent = data.reason || "-";
     elLastClose.textContent = fmtSAR(data.last_close);
-
     elRaw.textContent = JSON.stringify(data, null, 2);
-    elResult.classList.remove("hidden");
 
-  }catch(err){
-    console.error(err);
-    setStatus("err", "فشل الطلب. قد يكون السيرفر في وضع السكون. جرّب مرة أخرى بعد 20 ثانية.");
-  }finally{
-    elBtn.disabled = false;
+  } catch (e) {
+    setStatus("err", "فشل الاتصال بالخادم");
   }
-}
+};
 
-elBtn.addEventListener("click", analyze);
-elTicker.addEventListener("keydown", (e)=>{ if(e.key === "Enter") analyze(); });
+// -------------------------------
+// 🔥 تحليل أفضل 10 أسهم في السوق
+// -------------------------------
+elTop10Btn.onclick = async () => {
+  setStatus("info", "جاري تحليل السوق بالكامل...");
+  elResult.style.display = "none";
+  elRaw.textContent = "";
 
-// تسجيل Service Worker (PWA)
-if("serviceWorker" in navigator){
-  window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("./sw.js").catch(()=>{});
-  });
-}
+  try {
+    const res = await fetch(`${API_BASE}/top10?universe=all`);
+    const data = await res.json();
+
+    if (!data.items || data.items.length === 0) {
+      setStatus("err", "لا توجد فرص حالياً");
+      return;
+    }
+
+    let html = `
+      <table class="top10">
+        <tr>
+          <th>السهم</th>
+          <th>التوصية</th>
+          <th>الثقة</th>
+          <th>الدخول</th>
+          <th>الهدف</th>
+          <th>وقف الخسارة</th>
+        </tr>
+    `;
+
+    data.items.forEach(x => {
+      html += `
+        <tr>
+          <td>${x.ticker}</td>
+          <td class="buy">BUY</td>
+          <td>${Math.round(x.confidence * 100)}%</td>
+          <td>${fmtSAR(x.entry)}</td>
+          <td>${fmtSAR(x.take_profit)}</td>
+          <td>${fmtSAR(x.stop_loss)}</td>
+        </tr>
+      `;
+    });
+
+    html += "</table>";
+    elRaw.innerHTML = html;
+    setStatus("ok", "أفضل 10 فرص جاهزة");
+
+  } catch (e) {
+    setStatus("err", "فشل تحليل السوق");
+  }
+};
