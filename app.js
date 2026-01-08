@@ -13,15 +13,15 @@ const elEntry = document.getElementById("entry");
 const elTP = document.getElementById("tp");
 const elSL = document.getElementById("sl");
 const elReason = document.getElementById("reason");
-const elLastClose = document.getElementById("lastClose"); // ✅ تصحيح ID
+const elLastClose = document.getElementById("lastClose");
 const elRaw = document.getElementById("rawJson");
 
-// عناصر الواجهة (Top 10)
+// عناصر Top10 (لازم تكون موجودة في index.html إذا تبغى عرض مرتب)
 const elTop10 = document.getElementById("top10");
 const elTop10List = document.getElementById("top10List");
 const elTop10Raw = document.getElementById("top10RawJson");
 
-// أدوات مساعدة
+// ---------- Helpers ----------
 function setStatus(type, text) {
   elStatus.className = `status ${type}`;
   elStatus.textContent = text;
@@ -32,9 +32,9 @@ function fmtSAR(x) {
   return `${Number(x).toFixed(2)} SAR`;
 }
 
-function pct(x) {
+function pctInt(x) {
   if (x === null || x === undefined || Number.isNaN(Number(x))) return "—";
-  return `${Math.round(Number(x) * 100)}%`;
+  return `${Math.round(Number(x))}%`;
 }
 
 function show(el) {
@@ -51,18 +51,15 @@ function normalizeTicker(input) {
   let t = (input || "").trim().toUpperCase();
   if (!t) return "";
 
-  // إذا المستخدم كتب أرقام فقط مثل 1120 → نضيف .SR
+  // المستخدم يدخل بدون .SR (مثل 4140) → نضيف .SR
   if (/^\d+$/.test(t)) t = `${t}.SR`;
 
-  // إذا كتب 1120.SR أو 1120.SA.. نخليها كما هي (انت تستخدم SR)
-  // لو كتب 1120 بدون .SR مع مسافات تم التعامل أعلاه
-
+  // لو كتب 4140.SR خلاص
   return t;
 }
 
-function setPill(rec) {
+function setPillFromRec(rec) {
   elPill.className = "pill";
-
   if (rec === "BUY") {
     elPill.classList.add("buy");
     elPill.textContent = "BUY";
@@ -75,19 +72,125 @@ function setPill(rec) {
   }
 }
 
+// شارة حالة السهم (PASSED/REJECTED)
+function statusBadgeHTML(status) {
+  const s = (status || "").toUpperCase();
+  const isPass = (s === "PASSED");
+  const bg = isPass ? "#DCFCE7" : "#FEE2E2";
+  const fg = isPass ? "#166534" : "#991B1B";
+  const label = isPass ? "✅ PASSED" : "⛔ REJECTED";
+  return `<span style="display:inline-block;padding:6px 10px;border-radius:999px;background:${bg};color:${fg};font-weight:700;font-size:12px;">${label}</span>`;
+}
+
+// لون الثقة
+function confidenceColor(pct) {
+  const n = Number(pct);
+  if (Number.isNaN(n)) return "#111827";
+  if (n >= 70) return "#065F46";      // أخضر قوي
+  if (n >= 55) return "#0F766E";      // أخضر/تركوازي
+  if (n >= 45) return "#92400E";      // برتقالي
+  return "#991B1B";                   // أحمر
+}
+
+// ---------- Render Single Result ----------
+function renderSingle(data) {
+  // recommendation + pill
+  setPillFromRec(data.recommendation);
+
+  // confidence: نفضل confidence_pct (int) ثم fallback
+  const cp = (data.confidence_pct !== undefined && data.confidence_pct !== null)
+    ? Number(data.confidence_pct)
+    : (data.confidence !== undefined && data.confidence !== null)
+      ? Math.round(Number(data.confidence) * 100)
+      : null;
+
+  elConf.innerHTML = `<span style="font-weight:800;color:${confidenceColor(cp)}">${pctInt(cp)}</span>`;
+
+  elEntry.textContent = fmtSAR(data.entry);
+  elTP.textContent = fmtSAR(data.take_profit);
+  elSL.textContent = fmtSAR(data.stop_loss);
+  elLastClose.textContent = fmtSAR(data.last_close);
+
+  // reason + status badge
+  const st = data.status || "";
+  const reason = data.reason || "—";
+  elReason.innerHTML = `${statusBadgeHTML(st)} <div style="margin-top:10px;line-height:1.5;">${escapeHtml(reason)}</div>`;
+
+  elRaw.textContent = JSON.stringify(data, null, 2);
+}
+
+// ---------- Render Top10 ----------
+function renderTop10(items, raw) {
+  if (!elTop10List) {
+    // إذا ما عندك عناصر Top10 في index.html، نعرض في rawJson فقط
+    elRaw.textContent = JSON.stringify(raw, null, 2);
+    return;
+  }
+
+  elTop10List.innerHTML = items.slice(0, 10).map((x) => {
+    const rec = (x.recommendation || "NO_TRADE").toUpperCase();
+    const st = (x.status || "").toUpperCase();
+
+    const cp = (x.confidence_pct !== undefined && x.confidence_pct !== null)
+      ? Number(x.confidence_pct)
+      : (x.confidence !== undefined && x.confidence !== null)
+        ? Math.round(Number(x.confidence) * 100)
+        : null;
+
+    const pillBg = rec === "BUY" ? "#DCFCE7" : "#FEE2E2";
+    const pillFg = rec === "BUY" ? "#166534" : "#991B1B";
+
+    const statusChip = statusBadgeHTML(st);
+
+    return `
+      <div style="border:1px solid #E5E7EB;border-radius:14px;padding:12px;margin:10px 0;background:#fff;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+          <div style="font-weight:900;font-size:16px;">${escapeHtml(x.ticker || "—")}</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            ${statusChip}
+            <span style="display:inline-block;padding:6px 10px;border-radius:999px;background:${pillBg};color:${pillFg};font-weight:800;font-size:12px;">${rec}</span>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:14px;">
+          <div><strong>الثقة:</strong> <span style="font-weight:900;color:${confidenceColor(cp)}">${pctInt(cp)}</span></div>
+          <div><strong>الدخول:</strong> ${fmtSAR(x.entry)}</div>
+          <div><strong>الهدف:</strong> ${fmtSAR(x.take_profit)}</div>
+          <div><strong>الوقف:</strong> ${fmtSAR(x.stop_loss)}</div>
+        </div>
+
+        <div style="margin-top:8px;font-size:13px;color:#374151;line-height:1.4;">
+          <strong>سبب مختصر:</strong> ${escapeHtml((x.reason || "").split("|")[0] || "—")}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  if (elTop10Raw) elTop10Raw.textContent = JSON.stringify(raw, null, 2);
+}
+
+// ---------- Safe HTML ----------
+function escapeHtml(str) {
+  return String(str || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 // ----------------------------------------------------
 // تحليل سهم واحد
 // ----------------------------------------------------
 elBtn.onclick = async () => {
   const ticker = normalizeTicker(elTicker.value);
   if (!ticker) {
-    setStatus("err", "أدخل رمز السهم (مثال: 1120 أو 1120.SR)");
+    setStatus("err", "أدخل رمز السهم (مثال: 4140 أو 4140.SR)");
     return;
   }
 
-  // إظهار قسم السهم الواحد وإخفاء Top10
   show(elResult);
-  hide(elTop10);
+  if (elTop10) hide(elTop10);
 
   setStatus("info", "جاري التحليل...");
   elRaw.textContent = "{}";
@@ -114,88 +217,55 @@ elBtn.onclick = async () => {
       return;
     }
 
-    setStatus("ok", "تم التحليل");
+    setStatus("ok", "تم التحليل ✅");
+    renderSingle(data);
 
-    setPill(data.recommendation);
-    elConf.textContent = pct(data.confidence);
-    elEntry.textContent = fmtSAR(data.entry);
-    elTP.textContent = fmtSAR(data.take_profit);
-    elSL.textContent = fmtSAR(data.stop_loss);
-    elReason.textContent = data.reason || "—";
-    elLastClose.textContent = fmtSAR(data.last_close);
-
-    elRaw.textContent = JSON.stringify(data, null, 2);
   } catch (e) {
     setStatus("err", "فشل الاتصال بالخادم (تحقق من API)");
   }
 };
 
 // ----------------------------------------------------
-// 🔥 تحليل أفضل 10 أسهم
-// - يتوقع endpoint: /top10?universe=all
-// - لو اختلف شكل الاستجابة، الكود يتعامل مع أكثر من اسم محتمل
+// Top10
 // ----------------------------------------------------
-elTop10Btn.onclick = async () => {
-  // إخفاء سهم واحد وإظهار Top10
-  hide(elResult);
-  show(elTop10);
+if (elTop10Btn) {
+  elTop10Btn.onclick = async () => {
+    hide(elResult);
+    if (elTop10) show(elTop10);
 
-  setStatus("info", "جاري تحليل السوق بالكامل...");
-  elTop10List.innerHTML = "";
-  elTop10Raw.textContent = "[]";
+    setStatus("info", "جاري تحليل أفضل 10...");
+    if (elTop10List) elTop10List.innerHTML = "";
+    if (elTop10Raw) elTop10Raw.textContent = "[]";
 
-  try {
-    const url = `${API_BASE}/top10?universe=all`;
-    const res = await fetch(url, { method: "GET" });
-
-    let data;
     try {
-      data = await res.json();
-    } catch {
-      setStatus("err", "الرد ليس JSON (مشكلة بالخادم)");
-      return;
+      const url = `${API_BASE}/top10`;
+      const res = await fetch(url, { method: "GET" });
+
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        setStatus("err", "الرد ليس JSON (مشكلة بالخادم)");
+        return;
+      }
+
+      if (!res.ok) {
+        setStatus("err", data?.error || `خطأ بالخادم: ${res.status}`);
+        return;
+      }
+
+      const items = data.items || [];
+      if (!Array.isArray(items) || items.length === 0) {
+        setStatus("err", data.error || "لا توجد فرص حالياً");
+        return;
+      }
+
+      // نعرض أول 10
+      renderTop10(items, data);
+      setStatus("ok", "تم عرض أفضل 10 ✅");
+
+    } catch (e) {
+      setStatus("err", "فشل الاتصال بـ /top10");
     }
-
-    if (!res.ok) {
-      setStatus("err", data?.error || `خطأ بالخادم: ${res.status}`);
-      return;
-    }
-
-    // يدعم أكثر من شكل:
-    // { items: [...] } أو { top10: [...] } أو { results: [...] }
-    const items = data.items || data.top10 || data.results || [];
-
-    if (!Array.isArray(items) || items.length === 0) {
-      setStatus("err", "لا توجد فرص حالياً");
-      return;
-    }
-
-    // عرض Cards بسيطة داخل top10List
-    // (بدون CSS إضافي، لكن تظهر منظمة)
-    elTop10List.innerHTML = items.slice(0, 10).map((x) => {
-      const rec = x.recommendation || "BUY";
-      const pillClass = (rec === "BUY") ? "buy" : (rec === "SELL") ? "sell" : "no";
-
-      return `
-        <div class="kv full" style="border:1px solid #e5e7eb;border-radius:12px;padding:12px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-            <div style="font-weight:700;">${x.ticker || "—"}</div>
-            <div class="pill ${pillClass}" style="margin:0;">${rec}</div>
-          </div>
-
-          <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <div><strong>الثقة:</strong> ${pct(x.confidence)}</div>
-            <div><strong>الدخول:</strong> ${fmtSAR(x.entry)}</div>
-            <div><strong>الهدف:</strong> ${fmtSAR(x.take_profit)}</div>
-            <div><strong>الوقف:</strong> ${fmtSAR(x.stop_loss)}</div>
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    elTop10Raw.textContent = JSON.stringify(data, null, 2);
-    setStatus("ok", "أفضل 10 فرص جاهزة ✅");
-  } catch (e) {
-    setStatus("err", "فشل تحليل السوق (تحقق من endpoint /top10)");
-  }
-};
+  };
+}
