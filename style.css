@@ -142,3 +142,48 @@ pre{
   border: 1px solid var(--border);
   background:#fff;
 }
+.ticker-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+.ticker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+.ticker-symbol {
+    color: var(--primary);
+}
+.ticker-details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px 12px;
+    font-size: 0.9rem;
+}
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px dashed var(--border-light);
+    padding: 4px 0;
+}
+.detail-item.full {
+    grid-column: span 2;
+}
+.detail-label {
+    color: var(--text-light);
+}
+.detail-value {
+    font-weight: 500;
+    color: var(--text);
+}
+.no-data {
+    text-align: center;
+    color: var(--text-light);
+    padding: 20px;
+}
