@@ -1,367 +1,157 @@
-/* =========================
-   Tadawul PWA - app.js
-   Clean Top10 + Status + WATCH MODE
-   ========================= */
+// ملف app.js للواجهة الأمامية - متوافق مع الباك إند المعدل
 
-const API_BASE = "https://tadawul-mvp-api.onrender.com";
+// عناصر HTML
+const tickerInput = document.getElementById('ticker');
+const btnAnalyze = document.getElementById('btn');
+const btnTop10 = document.getElementById('btnTop10');
+const statusDiv = document.getElementById('status');
+const resultSection = document.getElementById('result');
+const top10Section = document.getElementById('top10');
+const pillDiv = document.getElementById('pill');
+const confidenceSpan = document.getElementById('confidence');
+const entrySpan = document.getElementById('entry');
+const tpSpan = document.getElementById('tp');
+const slSpan = document.getElementById('sl');
+const reasonSpan = document.getElementById('reason');
+const lastCloseSpan = document.getElementById('lastClose');
+const rawJsonPre = document.getElementById('rawJson');
+const top10ListDiv = document.getElementById('top10List');
+const top10RawJsonPre = document.getElementById('top10RawJson');
 
-const $ = (id) => document.getElementById(id);
+// عنوان API (تأكد من تغييره إذا كان مختلفًا)
+const API_BASE = ''; // سيستخدم نفس النطاق (نسبي)
 
-const elTicker = $("ticker");
-const btnAnalyze = $("btn");
-const btnTop10 = $("btnTop10");
-
-const statusEl = $("status");
-
-const resultSection = $("result");
-const pillEl = $("pill");
-const confidenceEl = $("confidence");
-const entryEl = $("entry");
-const tpEl = $("tp");
-const slEl = $("sl");
-const reasonEl = $("reason");
-const lastCloseEl = $("lastClose");
-const rawJsonEl = $("rawJson");
-
-const top10Section = $("top10");
-const top10ListEl = $("top10List");
-const top10RawEl = $("top10RawJson");
-
-/* -------------------------
-   Helpers
-------------------------- */
-
-function setStatus(text, type = "info") {
-  // type: info | ok | err
-  statusEl.textContent = text;
-  statusEl.classList.remove("info", "ok", "err");
-  statusEl.classList.add(type);
+// دالة مساعدة لعرض حالة النشاط
+function setStatus(message, type = 'info') {
+    statusDiv.textContent = message;
+    statusDiv.className = `status ${type}`;
 }
 
-function safeNum(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+// دالة لتحديث عناصر نتيجة سهم واحد
+function updateSingleResult(data) {
+    // إظهار القسم
+    resultSection.classList.remove('hidden');
+
+    // تحديث الحبة (Pill) بناءً على التوصية
+    if (data.recommendation === 'BUY') {
+        pillDiv.textContent = 'شراء';
+        pillDiv.className = 'pill buy';
+    } else if (data.status === 'APPROVED') {
+        pillDiv.textContent = 'مراقبة';
+        pillDiv.className = 'pill watch';
+    } else {
+        pillDiv.textContent = 'لا يوجد';
+        pillDiv.className = 'pill no-trade';
+    }
+
+    // تحديث الحقول
+    confidenceSpan.textContent = data.confidence ? (data.confidence * 100).toFixed(1) + '%' : '—';
+    entrySpan.textContent = data.entry || '—';
+    tpSpan.textContent = data.tp || '—';
+    slSpan.textContent = data.sl || '—';
+    reasonSpan.textContent = data.reason || '—';
+    lastCloseSpan.textContent = data.lastClose || '—';
+
+    // عرض JSON الخام
+    rawJsonPre.textContent = JSON.stringify(data, null, 2);
 }
 
-function fmtPrice(v) {
-  const n = safeNum(v);
-  if (n === null) return "—";
-  return `SAR ${n.toFixed(2)}`;
+// دالة لتحديث قائمة أفضل 10
+function updateTop10(data) {
+    top10Section.classList.remove('hidden');
+
+    // تحديث JSON الخام
+    top10RawJsonPre.textContent = JSON.stringify(data, null, 2);
+
+    // بناء عناصر HTML لكل سهم
+    if (!data.items || data.items.length === 0) {
+        top10ListDiv.innerHTML = '<p class="no-data">لا توجد فرص حالياً</p>';
+        return;
+    }
+
+    let html = '';
+    data.items.forEach(item => {
+        // تحديد لون الحبة
+        let pillClass = 'pill ';
+        if (item.recommendation === 'BUY') pillClass += 'buy';
+        else if (item.status === 'APPROVED') pillClass += 'watch';
+        else pillClass += 'no-trade';
+
+        html += `
+            <div class="ticker-card">
+                <div class="ticker-header">
+                    <span class="ticker-symbol">${item.ticker}</span>
+                    <span class="${pillClass}">${item.recommendation === 'BUY' ? 'شراء' : (item.status === 'APPROVED' ? 'مراقبة' : 'لا')}</span>
+                </div>
+                <div class="ticker-details">
+                    <div class="detail-item">
+                        <span class="detail-label">الثقة:</span>
+                        <span class="detail-value">${item.confidence ? (item.confidence * 100).toFixed(1) + '%' : '—'}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">الدخول:</span>
+                        <span class="detail-value">${item.entry || '—'}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">TP:</span>
+                        <span class="detail-value">${item.tp || '—'}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">SL:</span>
+                        <span class="detail-value">${item.sl || '—'}</span>
+                    </div>
+                    <div class="detail-item full">
+                        <span class="detail-label">السبب:</span>
+                        <span class="detail-value">${item.reason || '—'}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    top10ListDiv.innerHTML = html;
 }
 
-function fmtPct(v) {
-  const n = safeNum(v);
-  if (n === null) return "—";
-  return `${Math.round(n)}%`;
-}
+// ==================== حدث تحليل سهم واحد ====================
+btnAnalyze.addEventListener('click', async () => {
+    const ticker = tickerInput.value.trim();
+    if (!ticker) {
+        setStatus('الرجاء إدخال رمز السهم', 'error');
+        return;
+    }
 
-function normalizeTickerInput(t) {
-  const s = String(t || "").trim().toUpperCase();
-  if (!s) return "";
-  if (s.includes(".")) return s;
-  // allow "4140" => "4140.SR"
-  return `${s}.SR`;
-}
-
-/* -------------------------
-   Status / Recommendation Logic
-   هدف: ما يطلع "BUY + REJECTED" مع بعض
-   + WATCH MODE
-------------------------- */
-
-function computeDisplayState(item) {
-  const rec = String(item?.recommendation || "NO_TRADE").toUpperCase();
-  const apiStatus = item?.status ? String(item.status).toUpperCase() : "";
-
-  // ثقة: نقرأ confidence_pct (الجديد) أو confidence (القديم 0..1)
-  let confPct = safeNum(item?.confidence_pct);
-  if (confPct === null) {
-    const c = safeNum(item?.confidence);
-    confPct = c === null ? null : Math.round(c * 100);
-  }
-
-  const rulesScore = safeNum(item?.rules_score);
-
-  // الحالة الأساسية من API إن وجدت
-  let status = apiStatus || (rec === "BUY" ? "ACCEPTED" : "REJECTED");
-
-  // WATCH MODE (واجهة فقط):
-  // إذا مرفوض لكن "قريب من الدخول" (rules_score عالي أو ثقة عالية) نخليه WATCH بدل REJECTED
-  // (تقدر تغيّر الأرقام لاحقاً)
-  if (status === "REJECTED") {
-    const near =
-      (rulesScore !== null && rulesScore >= 60) ||
-      (confPct !== null && confPct >= 60);
-    if (near) status = "WATCH";
-  }
-
-  // recommendation المعروضة للمستخدم
-  let displayRec = "NO_TRADE";
-  if (status === "ACCEPTED") displayRec = "BUY";
-  if (status === "WATCH") displayRec = "WATCH";
-
-  return { status, displayRec, confPct, rulesScore };
-}
-
-function pillStyle(status) {
-  // نستخدم نفس عنصر .pill في CSS، ونغير اللون عبر inline بسيط
-  if (status === "ACCEPTED") {
-    return { text: "BUY", bg: "#D1FAE5", fg: "#065F46", border: "#34D399" };
-  }
-  if (status === "WATCH") {
-    return { text: "WATCH", bg: "#FEF3C7", fg: "#92400E", border: "#F59E0B" };
-  }
-  return { text: "NO_TRADE", bg: "#FEE2E2", fg: "#991B1B", border: "#FCA5A5" };
-}
-
-function shortReason(item) {
-  const r = String(item?.reason || "").trim();
-  if (!r) return "—";
-  // اختصار لطيف
-  if (r.length <= 140) return r;
-  return r.slice(0, 140) + "…";
-}
-
-/* -------------------------
-   Rendering: Single Result
-------------------------- */
-
-function renderSingle(item) {
-  const { status, displayRec, confPct } = computeDisplayState(item);
-  const p = pillStyle(status);
-
-  resultSection.classList.remove("hidden");
-
-  pillEl.textContent = p.text;
-  pillEl.style.background = p.bg;
-  pillEl.style.color = p.fg;
-  pillEl.style.border = `1px solid ${p.border}`;
-
-  confidenceEl.textContent = confPct === null ? "—" : `${confPct}%`;
-  entryEl.textContent = fmtPrice(item?.entry);
-  tpEl.textContent = fmtPrice(item?.take_profit);
-  slEl.textContent = fmtPrice(item?.stop_loss);
-
-  // نعرض "الحالة" داخل السبب كعنوان صغير (بدل BUY + REJECTED)
-  const reason = shortReason(item);
-  const statusBadge =
-    status === "ACCEPTED" ? "✅ ACCEPTED" : status === "WATCH" ? "👀 WATCH" : "⛔ REJECTED";
-
-  reasonEl.textContent = `${statusBadge} — ${reason}`;
-  lastCloseEl.textContent = fmtPrice(item?.last_close);
-
-  rawJsonEl.textContent = JSON.stringify(item, null, 2);
-}
-
-/* -------------------------
-   Rendering: Top10 Clean
-------------------------- */
-
-function clearTop10() {
-  top10ListEl.innerHTML = "";
-  top10RawEl.textContent = "[]";
-}
-
-function top10SortKey(item) {
-  const { status, confPct } = computeDisplayState(item);
-  const rank =
-    status === "ACCEPTED" ? 3 : status === "WATCH" ? 2 : 1; // ACCEPTED أعلى
-  const c = confPct === null ? 0 : confPct;
-  return { rank, c };
-}
-
-function renderTop10(items) {
-  top10Section.classList.remove("hidden");
-  clearTop10();
-
-  const arr = Array.isArray(items) ? items.slice() : [];
-
-  // ترتيب نظيف
-  arr.sort((a, b) => {
-    const ka = top10SortKey(a);
-    const kb = top10SortKey(b);
-    if (kb.rank !== ka.rank) return kb.rank - ka.rank;
-    return kb.c - ka.c;
-  });
-
-  // نبني كروت نظيفة
-  for (const it of arr) {
-    const { status, displayRec, confPct } = computeDisplayState(it);
-    const p = pillStyle(status);
-
-    const card = document.createElement("div");
-    card.className = "kv full";
-    card.style.border = "1px solid #E5E7EB";
-    card.style.borderRadius = "14px";
-    card.style.padding = "12px";
-    card.style.background = "#FFFFFF";
-
-    const header = document.createElement("div");
-    header.style.display = "flex";
-    header.style.alignItems = "center";
-    header.style.justifyContent = "space-between";
-    header.style.gap = "10px";
-
-    const left = document.createElement("div");
-    left.style.display = "flex";
-    left.style.flexDirection = "column";
-
-    const t = document.createElement("div");
-    t.style.fontWeight = "800";
-    t.style.fontSize = "16px";
-    t.textContent = String(it?.ticker || "—");
-
-    const sub = document.createElement("div");
-    sub.style.fontSize = "13px";
-    sub.style.color = "#6B7280";
-    sub.textContent = `الثقة: ${confPct === null ? "—" : confPct + "%"}`;
-
-    left.appendChild(t);
-    left.appendChild(sub);
-
-    const badge = document.createElement("span");
-    badge.textContent = displayRec; // BUY / WATCH / NO_TRADE
-    badge.style.padding = "6px 10px";
-    badge.style.borderRadius = "999px";
-    badge.style.background = p.bg;
-    badge.style.color = p.fg;
-    badge.style.border = `1px solid ${p.border}`;
-    badge.style.fontWeight = "800";
-    badge.style.fontSize = "12px";
-    badge.style.whiteSpace = "nowrap";
-
-    header.appendChild(left);
-    header.appendChild(badge);
-
-    const body = document.createElement("div");
-    body.style.display = "grid";
-    body.style.gridTemplateColumns = "1fr 1fr";
-    body.style.gap = "8px";
-    body.style.marginTop = "10px";
-
-    const mkRow = (label, value) => {
-      const wrap = document.createElement("div");
-      wrap.style.border = "1px solid #F3F4F6";
-      wrap.style.borderRadius = "12px";
-      wrap.style.padding = "10px";
-      const k = document.createElement("div");
-      k.style.fontSize = "12px";
-      k.style.color = "#6B7280";
-      k.textContent = label;
-      const v = document.createElement("div");
-      v.style.fontSize = "14px";
-      v.style.fontWeight = "800";
-      v.textContent = value;
-      wrap.appendChild(k);
-      wrap.appendChild(v);
-      return wrap;
-    };
-
-    body.appendChild(mkRow("الدخول", fmtPrice(it?.entry)));
-    body.appendChild(mkRow("الهدف", fmtPrice(it?.take_profit)));
-    body.appendChild(mkRow("الوقف", fmtPrice(it?.stop_loss)));
-    body.appendChild(mkRow("آخر إغلاق", fmtPrice(it?.last_close)));
-
-    const reasonBox = document.createElement("div");
-    reasonBox.style.marginTop = "10px";
-    reasonBox.style.padding = "10px";
-    reasonBox.style.borderRadius = "12px";
-    reasonBox.style.background = "#F9FAFB";
-    reasonBox.style.border = "1px solid #F3F4F6";
-    reasonBox.style.fontSize = "13px";
-    reasonBox.style.color = "#111827";
-    reasonBox.textContent = shortReason(it);
-
-    card.appendChild(header);
-    card.appendChild(body);
-    card.appendChild(reasonBox);
-
-    top10ListEl.appendChild(card);
-  }
-
-  top10RawEl.textContent = JSON.stringify(arr, null, 2);
-}
-
-/* -------------------------
-   API Calls
-------------------------- */
-
-async function apiGet(path) {
-  const url = `${API_BASE}${path}`;
-  const res = await fetch(url, { method: "GET" });
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(`${res.status} ${res.statusText} ${txt}`.trim());
-  }
-  return res.json();
-}
-
-/* -------------------------
-   Actions
-------------------------- */
-
-async function onAnalyze() {
-  const t = normalizeTickerInput(elTicker.value);
-  if (!t) {
-    setStatus("اكتب رمز السهم أولاً", "err");
-    return;
-  }
-
-  try {
-    btnAnalyze.disabled = true;
-    btnTop10.disabled = true;
-    setStatus("جاري التحليل…", "info");
-
-    const data = await apiGet(`/predict?ticker=${encodeURIComponent(t)}`);
-
-    setStatus("✅ تم التحليل", "ok");
-    renderSingle(data);
-  } catch (e) {
-    console.error(e);
-    setStatus("فشل التحليل. تأكد من API ثم جرّب مرة أخرى.", "err");
-  } finally {
-    btnAnalyze.disabled = false;
-    btnTop10.disabled = false;
-  }
-}
-
-async function onTop10() {
-  try {
-    btnAnalyze.disabled = true;
-    btnTop10.disabled = true;
-
-    setStatus("جاري تحليل السوق (أفضل 10)…", "info");
-    top10Section.classList.remove("hidden");
-    clearTop10();
-
-    const data = await apiGet(`/top10`);
-
-    const items = data?.items || [];
-    renderTop10(items);
-
-    setStatus("✅ تم عرض أفضل 10", "ok");
-  } catch (e) {
-    console.error(e);
-    setStatus("فشل الاتصال بـ /top10", "err");
-    // نخلي القسم ظاهر لكن فاضي
-    top10Section.classList.remove("hidden");
-    clearTop10();
-  } finally {
-    btnAnalyze.disabled = false;
-    btnTop10.disabled = false;
-  }
-}
-
-/* -------------------------
-   Events
-------------------------- */
-
-btnAnalyze?.addEventListener("click", onAnalyze);
-btnTop10?.addEventListener("click", onTop10);
-
-elTicker?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") onAnalyze();
+    setStatus('جاري التحليل...', 'info');
+    try {
+        const response = await fetch(`${API_BASE}/predict?ticker=${encodeURIComponent(ticker)}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        setStatus('تم التحليل بنجاح', 'success');
+        updateSingleResult(data);
+    } catch (error) {
+        console.error(error);
+        setStatus('حدث خطأ في الاتصال بالخادم', 'error');
+    }
 });
 
-// Ready
-setStatus("جاهز", "info");
+// ==================== حدث أفضل 10 ====================
+btnTop10.addEventListener('click', async () => {
+    setStatus('جاري مسح السوق...', 'info');
+    try {
+        const response = await fetch(`${API_BASE}/top10`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        setStatus(`تم المسح: ${data.total_scanned} سهم`, 'success');
+        updateTop10(data);
+    } catch (error) {
+        console.error(error);
+        setStatus('حدث خطأ في جلب أفضل 10', 'error');
+    }
+});
+
+// تحميل أولي (اختياري) - يمكنك إلغاء التعليق إذا أردت تحميل أفضل 10 عند فتح الصفحة
+// window.addEventListener('load', () => {
+//     btnTop10.click();
+// });
