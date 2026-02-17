@@ -19,7 +19,7 @@ const top10ListDiv = document.getElementById('top10List');
 const top10RawJsonPre = document.getElementById('top10RawJson');
 
 // عنوان API (يستخدم نفس النطاق)
-const API_BASE = '';
+const API_BASE = 'https://tadawul-mvp-api.onrender.com';
 
 // دالة مساعدة لعرض حالة النشاط
 function setStatus(message, type = 'info') {
