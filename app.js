@@ -1,6 +1,6 @@
 // ملف app.js للواجهة الأمامية - يدعم قائمتين (صعود وقيعان)
 // عنوان API (يستخدم نفس النطاق)
-const API_BASE = '';
+const API_BASE = 'https://tadawul-mvp-api.onrender.com';
 
 // عناصر HTML
 const tickerInput = document.getElementById('ticker');
