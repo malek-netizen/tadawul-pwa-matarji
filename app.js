@@ -37,18 +37,38 @@ function formatConfidence(value) {
 // دالة لتحديث نتيجة سهم واحد
 function updateSingleResult(data) {
     resultSection.classList.remove('hidden');
+    console.log('بيانات السهم:', data); // للتشخيص (يمكنك إزالته لاحقاً)
 
-    // استخدم بيانات الصعود (uptrend) كافتراضية للعرض
-    const strategy = data.uptrend || { status: 'REJECTED', confidence: 0, entry: '—', tp: '—', sl: '—', reason: '—' };
+    // تحديد البيانات الفعلية للعرض
+    let strategy;
 
+    if (data.uptrend !== undefined) {
+        // إذا كان الهيكل الجديد (يحتوي على uptrend و bottom)
+        // نفضل استخدام uptrend إذا كان APPROVED، وإلا نستخدم bottom
+        strategy = data.uptrend?.status === 'APPROVED' ? data.uptrend : data.bottom;
+    } else {
+        // إذا كان الهيكل القديم (كائن بسيط)
+        strategy = data;
+    }
+
+    // إذا لم نجد بيانات صالحة، نستخدم كائن افتراضي لتجنب الأخطاء
+    if (!strategy) {
+        strategy = { status: 'REJECTED', confidence: 0, entry: '—', tp: '—', sl: '—', reason: 'لا توجد بيانات' };
+    }
+
+    // تحديث الحبة (Pill)
     pillDiv.textContent = strategy.status === 'APPROVED' ? 'شراء' : 'لا يوجد';
     pillDiv.className = strategy.status === 'APPROVED' ? 'pill buy' : 'pill no-trade';
+
+    // تحديث الحقول
     confidenceSpan.textContent = formatConfidence(strategy.confidence);
     entrySpan.textContent = strategy.entry ?? '—';
     tpSpan.textContent = strategy.tp ?? '—';
     slSpan.textContent = strategy.sl ?? '—';
     reasonSpan.textContent = strategy.reason || '—';
-    lastCloseSpan.textContent = data.lastClose ?? '—';
+    lastCloseSpan.textContent = data.lastClose ?? strategy.lastClose ?? '—';
+
+    // عرض JSON الخام
     rawJsonPre.textContent = JSON.stringify(data, null, 2);
 }
 
