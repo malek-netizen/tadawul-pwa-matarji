@@ -75,21 +75,16 @@
 
       <!-- قسم جديد لعرض أفضل 10 (سيتم تعبئته من app.js) -->
       <section id="top10" class="result hidden" style="margin-top:16px;">
-        <h3 style="margin:0 0 10px 0;">📈 أفضل 10 فرص</h3>
-        <!-- حاويتان للقائمتين: صعود وقيعان -->
-        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-          <div style="flex: 1; min-width: 300px;" id="top10Uptrend">
-            <!-- سيتم تعبئته من JavaScript بفرص الصعود -->
-          </div>
-          <div style="flex: 1; min-width: 300px;" id="top10Bottom">
-            <!-- سيتم تعبئته من JavaScript بفرص القيعان -->
-          </div>
-        </div>
-        <details class="raw">
-          <summary>عرض JSON الخام (Top10)</summary>
-          <pre id="top10RawJson">[]</pre>
-        </details>
-      </section>
+  <h3 style="margin:0 0 10px 0;">📈 أفضل 10 فرص</h3>
+  <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 300px;" id="top10Uptrend"></div>
+    <div style="flex: 1; min-width: 300px;" id="top10Bottom"></div>
+  </div>
+  <details class="raw">
+    <summary>عرض JSON الخام (Top10)</summary>
+    <pre id="top10RawJson">[]</pre>
+  </details>
+</section>
 
     </main>
 
