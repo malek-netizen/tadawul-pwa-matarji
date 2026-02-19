@@ -1,6 +1,5 @@
-// ملف app.js للواجهة الأمامية - يدعم قائمتين (صعود وقيعان)
-// عنوان API (يستخدم نفس النطاق)
-const API_BASE = 'https://tadawul-mvp-api.onrender.com';
+// ملف app.js للواجهة الأمامية - يدعم ثلاث استراتيجيات (صعود، قيعان، AI)
+const API_BASE = 'https://tadawul-mvp-api.onrender.com'; // أو الرابط المباشر
 
 // عناصر HTML
 const tickerInput = document.getElementById('ticker');
@@ -19,6 +18,7 @@ const lastCloseSpan = document.getElementById('lastClose');
 const rawJsonPre = document.getElementById('rawJson');
 const top10UptrendDiv = document.getElementById('top10Uptrend');
 const top10BottomDiv = document.getElementById('top10Bottom');
+const top10AiDiv = document.getElementById('top10Ai');
 const top10RawJsonPre = document.getElementById('top10RawJson');
 
 // دالة مساعدة لعرض حالة النشاط
@@ -27,67 +27,70 @@ function setStatus(message, type = 'info') {
     statusDiv.className = `status ${type}`;
 }
 
-// دالة لتنسيق الثقة (تتعامل مع الكسور العشرية والنسب المئوية)
+// دالة لتنسيق الثقة
 function formatConfidence(value) {
     if (value === undefined || value === null || value === 0) return '—';
-    if (value > 1) return value.toFixed(1) + '%';      // إذا كانت نسبة مئوية
-    return (value * 100).toFixed(1) + '%';              // إذا كانت كسر عشري
+    if (value > 1) return value.toFixed(1) + '%';
+    return (value * 100).toFixed(1) + '%';
 }
 
-// دالة لتحديث نتيجة سهم واحد
+// دالة لتحديث نتيجة سهم واحد (تعرض أسباب جميع الاستراتيجيات)
 function updateSingleResult(data) {
     resultSection.classList.remove('hidden');
-    console.log('بيانات السهم:', data); // للتشخيص (يمكنك إزالته لاحقاً)
+    console.log('بيانات السهم:', data);
 
-    // تحديد البيانات الفعلية للعرض
-    let strategy;
+    // دالة مساعدة لبناء نص الأسباب
+    const buildReason = (strategy) => {
+        if (strategy.status === 'APPROVED') {
+            return `✅ ${strategy.reason} (ثقة: ${formatConfidence(strategy.confidence)})`;
+        } else {
+            return `❌ ${strategy.reason}`;
+        }
+    };
 
-    if (data.uptrend !== undefined) {
-        // إذا كان الهيكل الجديد (يحتوي على uptrend و bottom)
-        // نفضل استخدام uptrend إذا كان APPROVED، وإلا نستخدم bottom
-        strategy = data.uptrend?.status === 'APPROVED' ? data.uptrend : data.bottom;
-    } else {
-        // إذا كان الهيكل القديم (كائن بسيط)
-        strategy = data;
-    }
+    // تجميع الأسباب من الاستراتيجيات الثلاث
+    const reasons = [
+        `📊 شروط المتوسطات: ${buildReason(data.uptrend)}`,
+        `🎯 صيد القيعان: ${buildReason(data.bottom)}`,
+        `🤖 الذكاء الاصطناعي: ${buildReason(data.ai)}`
+    ].join(' | ');
 
-    // إذا لم نجد بيانات صالحة، نستخدم كائن افتراضي لتجنب الأخطاء
-    if (!strategy) {
-        strategy = { status: 'REJECTED', confidence: 0, entry: '—', tp: '—', sl: '—', reason: 'لا توجد بيانات' };
-    }
+    // نحدد التوصية الرئيسية (مثلاً إذا كانت أي استراتيجية APPROVED نعرض شراء)
+    const anyApproved = data.uptrend.status === 'APPROVED' || data.bottom.status === 'APPROVED' || data.ai.status === 'APPROVED';
+    pillDiv.textContent = anyApproved ? 'شراء' : 'لا يوجد';
+    pillDiv.className = anyApproved ? 'pill buy' : 'pill no-trade';
 
-    // تحديث الحبة (Pill)
-    pillDiv.textContent = strategy.status === 'APPROVED' ? 'شراء' : 'لا يوجد';
-    pillDiv.className = strategy.status === 'APPROVED' ? 'pill buy' : 'pill no-trade';
-
-    // تحديث الحقول
-    confidenceSpan.textContent = formatConfidence(strategy.confidence);
-    entrySpan.textContent = strategy.entry ?? '—';
-    tpSpan.textContent = strategy.tp ?? '—';
-    slSpan.textContent = strategy.sl ?? '—';
-    reasonSpan.textContent = strategy.reason || '—';
-    lastCloseSpan.textContent = data.lastClose ?? strategy.lastClose ?? '—';
+    // نعرض أول استراتيجية كبيانات رقمية (يمكن عرض أي منها)
+    const primary = data.uptrend.status === 'APPROVED' ? data.uptrend : (data.bottom.status === 'APPROVED' ? data.bottom : data.ai);
+    confidenceSpan.textContent = formatConfidence(primary.confidence);
+    entrySpan.textContent = primary.entry ?? '—';
+    tpSpan.textContent = primary.tp ?? '—';
+    slSpan.textContent = primary.sl ?? '—';
+    reasonSpan.textContent = reasons;  // عرض الأسباب المجمعة
+    lastCloseSpan.textContent = data.lastClose ?? '—';
 
     // عرض JSON الخام
     rawJsonPre.textContent = JSON.stringify(data, null, 2);
 }
 
-// دالة لتحديث قائمة أفضل 10 (قائمتين)
+// دالة لتحديث قائمة أفضل 10 (ثلاث قوائم)
 function updateTop10(data) {
     top10Section.classList.remove('hidden');
     top10RawJsonPre.textContent = JSON.stringify(data, null, 2);
 
-    // عرض قائمة الصعود (uptrend)
-    if (!data.uptrend || data.uptrend.length === 0) {
-        top10UptrendDiv.innerHTML = '<p class="no-data">🚫 لا توجد فرص صاعدة حالياً</p>';
-    } else {
-        let html = '<h4>🔥 فرص صاعدة</h4>';
-        data.uptrend.forEach(item => {
+    // دالة مساعدة لإنشاء بطاقات القائمة
+    const renderList = (list, container, title) => {
+        if (!list || list.length === 0) {
+            container.innerHTML = `<h4>${title}</h4><p class="no-data">لا توجد فرص حالياً</p>`;
+            return;
+        }
+        let html = `<h4>${title}</h4>`;
+        list.forEach(item => {
             html += `
                 <div class="ticker-card">
                     <div class="ticker-header">
                         <span class="ticker-symbol">${item.ticker}</span>
-                        <span class="pill buy">شراء</span>
+                        <span class="pill buy">فرصة</span>
                     </div>
                     <div class="ticker-details">
                         <div class="detail-item"><span class="detail-label">الثقة:</span> <span class="detail-value">${formatConfidence(item.confidence)}</span></div>
@@ -99,33 +102,12 @@ function updateTop10(data) {
                 </div>
             `;
         });
-        top10UptrendDiv.innerHTML = html;
-    }
+        container.innerHTML = html;
+    };
 
-    // عرض قائمة القيعان (bottom)
-    if (!data.bottom || data.bottom.length === 0) {
-        top10BottomDiv.innerHTML = '<p class="no-data">🚫 لا توجد فرص قيعان حالياً</p>';
-    } else {
-        let html = '<h4>📉 فرص قيعان مرتدة</h4>';
-        data.bottom.forEach(item => {
-            html += `
-                <div class="ticker-card">
-                    <div class="ticker-header">
-                        <span class="ticker-symbol">${item.ticker}</span>
-                        <span class="pill watch">مراقبة</span>
-                    </div>
-                    <div class="ticker-details">
-                        <div class="detail-item"><span class="detail-label">الثقة:</span> <span class="detail-value">${formatConfidence(item.confidence)}</span></div>
-                        <div class="detail-item"><span class="detail-label">الدخول:</span> <span class="detail-value">${item.entry || '—'}</span></div>
-                        <div class="detail-item"><span class="detail-label">TP:</span> <span class="detail-value">${item.tp || '—'}</span></div>
-                        <div class="detail-item"><span class="detail-label">SL:</span> <span class="detail-value">${item.sl || '—'}</span></div>
-                        <div class="detail-item full"><span class="detail-label">السبب:</span> <span class="detail-value">${item.reason || '—'}</span></div>
-                    </div>
-                </div>
-            `;
-        });
-        top10BottomDiv.innerHTML = html;
-    }
+    renderList(data.uptrend, top10UptrendDiv, '📊 شروط المتوسطات');
+    renderList(data.bottom, top10BottomDiv, '🎯 صيد القيعان');
+    renderList(data.ai, top10AiDiv, '🤖 الذكاء الاصطناعي');
 }
 
 // حدث تحليل سهم واحد
@@ -162,6 +144,3 @@ btnTop10.addEventListener('click', async () => {
         setStatus('حدث خطأ في جلب أفضل 10', 'error');
     }
 });
-
-// تحميل أولي (اختياري)
-// window.addEventListener('load', () => btnTop10.click());
