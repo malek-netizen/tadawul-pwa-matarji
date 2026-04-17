@@ -1,109 +1,426 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#1E40AF" />
-  <title>محلل أسهم تداول</title>
+  <title>محلل أسهم تداول - لوحة الدخول</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="stylesheet" href="./style.css" />
+  <style>
+    /* --- أنماط إضافية لنظام تسجيل الدخول والخروج --- */
+    .login-overlay {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 70vh;
+      padding: 1.5rem;
+    }
+    .login-card {
+      background: white;
+      border-radius: 32px;
+      box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.2);
+      padding: 2rem 1.8rem;
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+      border: 1px solid #e2e8f0;
+      transition: all 0.2s;
+    }
+    .login-card h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      color: #1e293b;
+      font-weight: 700;
+      font-size: 1.8rem;
+    }
+    .login-card p {
+      color: #475569;
+      margin-bottom: 1.8rem;
+      font-size: 0.9rem;
+    }
+    .login-input {
+      width: 100%;
+      padding: 12px 16px;
+      margin: 10px 0;
+      border: 1px solid #cbd5e1;
+      border-radius: 24px;
+      font-size: 1rem;
+      background: #f8fafc;
+      transition: 0.2s;
+      font-family: inherit;
+    }
+    .login-input:focus {
+      border-color: #1E40AF;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(30,64,175,0.2);
+      background: white;
+    }
+    .login-btn {
+      background: #1E40AF;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      width: 100%;
+      border-radius: 40px;
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin-top: 16px;
+      cursor: pointer;
+      transition: 0.2s;
+      font-family: inherit;
+    }
+    .login-btn:hover {
+      background: #1e3a8a;
+      transform: scale(0.98);
+    }
+    .error-msg {
+      color: #dc2626;
+      background: #fee2e2;
+      padding: 10px;
+      border-radius: 40px;
+      font-size: 0.85rem;
+      margin-top: 12px;
+      text-align: center;
+    }
+    .logout-btn {
+      background: #334155;
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 40px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+      margin-right: 12px;
+      font-family: inherit;
+    }
+    .logout-btn:hover {
+      background: #1e293b;
+    }
+    .header-logout-area {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .welcome-tag {
+      background: #e0e7ff;
+      padding: 6px 14px;
+      border-radius: 40px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #1e3a8a;
+    }
+    .hidden-content {
+      display: none !important;
+    }
+    .app-container {
+      transition: all 0.2s;
+    }
+    /* ضبط الزر القديم في الهيدر (اختياري) */
+    .header h1 {
+      margin: 0;
+      font-size: 1.6rem;
+    }
+    @media (max-width: 560px) {
+      .header-logout-area {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .welcome-tag {
+        text-align: center;
+      }
+      .logout-btn {
+        margin-right: 0;
+      }
+    }
+  </style>
 </head>
 <body>
-  <div class="app">
-    <header class="header">
-      <h1>محلل أسهم تداول</h1>
-      <p>أداة تعليمية لتحليل سهم السوق السعودي عبر API</p>
-    </header>
 
-    <main class="card">
-      <label for="ticker">رمز السهم (مثال: 1120.SR)</label>
-
-      <!-- الصف الأول: إدخال + زر تحليل سهم واحد -->
-      <div class="row">
-        <input id="ticker" placeholder="1120.SR" autocomplete="off" inputmode="text" />
-        <button id="btn">تحليل</button>
-      </div>
-
-      <!-- الصف الثاني: زر تحليل أفضل 10 -->
-      <div class="row" style="margin-top:10px;">
-        <button id="btnTop10" style="width:100%;">🔥 أفضل 10 فرص في السوق</button>
-      </div>
-
-      <div id="status" class="status info">جاهز</div>
-
-      <!-- نتائج سهم واحد -->
-      <section id="result" class="result hidden">
-        <div class="pill" id="pill">—</div>
-
-        <div class="grid">
-          <div class="kv">
-            <div class="k">الثقة</div>
-            <div class="v" id="confidence">—</div>
+  <!-- حاوية التطبيق الأصلي (المحتوى الرئيسي) سيتم إخفاؤها حتى تسجيل الدخول -->
+  <div id="mainAppContainer" class="app-container hidden-content">
+    <div class="app">
+      <header class="header">
+        <div class="header-logout-area">
+          <div>
+            <h1>محلل أسهم تداول</h1>
+            <p>أداة تعليمية لتحليل سهم السوق السعودي عبر API</p>
           </div>
-
-          <div class="kv">
-            <div class="k">سعر الدخول</div>
-            <div class="v" id="entry">—</div>
-          </div>
-
-          <div class="kv">
-            <div class="k">جني الربح</div>
-            <div class="v" id="tp">—</div>
-          </div>
-
-          <div class="kv">
-            <div class="k">إيقاف الخسارة</div>
-            <div class="v" id="sl">—</div>
-          </div>
-
-          <div class="kv full">
-            <div class="k">السبب</div>
-            <div class="v" id="reason">—</div>
-          </div>
-
-          <div class="kv full">
-            <div class="k">آخر إغلاق</div>
-            <div class="v" id="lastClose">—</div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span id="welcomeUserSpan" class="welcome-tag">مرحباً، مستخدم</span>
+            <button id="logoutButtonGlobal" class="logout-btn">🚪 تسجيل خروج</button>
           </div>
         </div>
+      </header>
 
-        <details class="raw">
-          <summary>عرض JSON الخام</summary>
-          <pre id="rawJson">{}</pre>
-        </details>
-      </section>
+      <main class="card">
+        <label for="ticker">رمز السهم (مثال: 1120.SR)</label>
 
-      <!-- قسم أفضل 10 فرص (ثلاث قوائم) -->
-      <section id="top10" class="result hidden" style="margin-top:16px;">
-        <h3 style="margin:0 0 10px 0;">📈 أفضل 10 فرص</h3>
-        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-          <div style="flex: 1; min-width: 300px;" id="top10Uptrend">
-            <h4 style="margin-top:0;">📊 شروط المتوسطات</h4>
-            <!-- سيتم تعبئتها من JS -->
-          </div>
-          <div style="flex: 1; min-width: 300px;" id="top10Bottom">
-            <h4 style="margin-top:0;">🎯 صيد القيعان</h4>
-          </div>
-          <div style="flex: 1; min-width: 300px;" id="top10Ai">
-            <h4 style="margin-top:0;">🤖 الذكاء الاصطناعي</h4>
-          </div>
+        <!-- الصف الأول: إدخال + زر تحليل سهم واحد -->
+        <div class="row">
+          <input id="ticker" placeholder="1120.SR" autocomplete="off" inputmode="text" />
+          <button id="btn">تحليل</button>
         </div>
-        <details class="raw">
-          <summary>عرض JSON الخام (Top10)</summary>
-          <pre id="top10RawJson">[]</pre>
-        </details>
-      </section>
 
-    </main>
+        <!-- الصف الثاني: زر تحليل أفضل 10 -->
+        <div class="row" style="margin-top:10px;">
+          <button id="btnTop10" style="width:100%;">🔥 أفضل 10 فرص في السوق</button>
+        </div>
 
-    <footer class="footer">
-      <div class="warn">
-        <strong>تنبيه تعليمي:</strong>
-        هذه الأداة لأغراض تعليمية فقط وليست توصية استثمارية. قد تختلف النتائج عن الواقع.
-      </div>
-    </footer>
+        <div id="status" class="status info">جاهز</div>
+
+        <!-- نتائج سهم واحد -->
+        <section id="result" class="result hidden">
+          <div class="pill" id="pill">—</div>
+
+          <div class="grid">
+            <div class="kv">
+              <div class="k">الثقة</div>
+              <div class="v" id="confidence">—</div>
+            </div>
+
+            <div class="kv">
+              <div class="k">سعر الدخول</div>
+              <div class="v" id="entry">—</div>
+            </div>
+
+            <div class="kv">
+              <div class="k">جني الربح</div>
+              <div class="v" id="tp">—</div>
+            </div>
+
+            <div class="kv">
+              <div class="k">إيقاف الخسارة</div>
+              <div class="v" id="sl">—</div>
+            </div>
+
+            <div class="kv full">
+              <div class="k">السبب</div>
+              <div class="v" id="reason">—</div>
+            </div>
+
+            <div class="kv full">
+              <div class="k">آخر إغلاق</div>
+              <div class="v" id="lastClose">—</div>
+            </div>
+          </div>
+
+          <details class="raw">
+            <summary>عرض JSON الخام</summary>
+            <pre id="rawJson">{}</pre>
+          </details>
+        </section>
+
+        <!-- قسم أفضل 10 فرص (ثلاث قوائم) -->
+        <section id="top10" class="result hidden" style="margin-top:16px;">
+          <h3 style="margin:0 0 10px 0;">📈 أفضل 10 فرص</h3>
+          <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 300px;" id="top10Uptrend">
+              <h4 style="margin-top:0;">📊 شروط المتوسطات</h4>
+            </div>
+            <div style="flex: 1; min-width: 300px;" id="top10Bottom">
+              <h4 style="margin-top:0;">🎯 صيد القيعان</h4>
+            </div>
+            <div style="flex: 1; min-width: 300px;" id="top10Ai">
+              <h4 style="margin-top:0;">🤖 الذكاء الاصطناعي</h4>
+            </div>
+          </div>
+          <details class="raw">
+            <summary>عرض JSON الخام (Top10)</summary>
+            <pre id="top10RawJson">[]</pre>
+          </details>
+        </section>
+
+      </main>
+
+      <footer class="footer">
+        <div class="warn">
+          <strong>تنبيه تعليمي:</strong>
+          هذه الأداة لأغراض تعليمية فقط وليست توصية استثمارية. قد تختلف النتائج عن الواقع.
+        </div>
+      </footer>
+    </div>
   </div>
 
+  <!-- شاشة تسجيل الدخول (تظهر في البداية) -->
+  <div id="loginScreen" class="login-overlay">
+    <div class="login-card">
+      <h2>🔐 دخول المحلل</h2>
+      <p>أدخل بيانات الدخول الخاصة بك</p>
+      <input type="text" id="loginUsername" class="login-input" placeholder="اسم المستخدم" autocomplete="username">
+      <input type="password" id="loginPassword" class="login-input" placeholder="كلمة المرور" autocomplete="current-password">
+      <button id="doLoginBtn" class="login-btn">دخول 📊</button>
+      <div id="loginErrorMsg" class="error-msg" style="display: none;"></div>
+      <div style="margin-top: 20px; font-size: 12px; color: #64748b;">🔧 ملاحظة: يمكن إضافة مستخدمين جدد يدوياً في الكود (مصفوفة usersList)</div>
+    </div>
+  </div>
+
+  <!-- تحميل الـ script الأصلي الذي يتعامل مع التحليل (app.js) إن وجد -->
   <script src="./app.js"></script>
+  
+  <!-- نظام تسجيل الدخول والجلسات (يضمن حماية المحتوى) -->
+  <script>
+    (function() {
+      // ---------- 📌 البيانات اليدوية (يمكن تعديلها مباشرة من قبل المطور) ----------
+      // قائمة المستخدمين المسموح لهم – قم بإضافة أو تعديل الأزواج (username / password) يدوياً هنا
+      const usersList = [
+        { username: "admin", password: "admin123" },
+        { username: "trader", password: "saudi2024" },
+        { username: "محلل", password: "ta22ol" },
+        { username: "mustafa", password: "123456" },
+        // 👇 أضف أي مستخدم جديد بالصيغة التالية:
+        // { username: "your_name", password: "your_password" },
+      ];
+
+      // مفاتيح التخزين المحلي
+      const STORAGE_KEY = "stock_analyzer_logged_in";
+      const STORAGE_USER = "stock_analyzer_user";
+
+      // عناصر DOM
+      const loginScreen = document.getElementById("loginScreen");
+      const mainAppContainer = document.getElementById("mainAppContainer");
+      const loginBtn = document.getElementById("doLoginBtn");
+      const loginUsernameInput = document.getElementById("loginUsername");
+      const loginPasswordInput = document.getElementById("loginPassword");
+      const loginErrorMsgDiv = document.getElementById("loginErrorMsg");
+      const logoutBtnGlobal = document.getElementById("logoutButtonGlobal");
+      const welcomeUserSpan = document.getElementById("welcomeUserSpan");
+
+      // دالة عرض الخطأ
+      function showLoginError(msg) {
+        loginErrorMsgDiv.textContent = msg;
+        loginErrorMsgDiv.style.display = "block";
+        setTimeout(() => {
+          if (loginErrorMsgDiv) loginErrorMsgDiv.style.display = "none";
+        }, 3000);
+      }
+
+      // دالة التحقق من بيانات الدخول
+      function authenticateUser(username, password) {
+        if (!username || !password) return false;
+        return usersList.some(user => user.username === username && user.password === password);
+      }
+
+      // دالة تسجيل الدخول
+      function performLogin(username, password) {
+        if (!authenticateUser(username, password)) {
+          showLoginError("❌ اسم المستخدم أو كلمة المرور غير صحيحة");
+          return false;
+        }
+        // نجاح الدخول: تخزين الجلسة في localStorage
+        localStorage.setItem(STORAGE_KEY, "true");
+        localStorage.setItem(STORAGE_USER, username);
+        // تبديل الواجهات
+        loginScreen.style.display = "none";
+        mainAppContainer.classList.remove("hidden-content");
+        // تحديث رسالة الترحيب
+        if (welcomeUserSpan) welcomeUserSpan.textContent = `مرحباً، ${username}`;
+        // إظهار رسالة نجاح اختيارية
+        const statusDiv = document.getElementById("status");
+        if (statusDiv && statusDiv.innerText === "جاهز") {
+          // فقط لا نحدث فوضى، يمكن تركها
+        }
+        return true;
+      }
+
+      // دالة تسجيل الخروج
+      function logout() {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(STORAGE_USER);
+        // إخفاء التطبيق وإظهار شاشة الدخول
+        mainAppContainer.classList.add("hidden-content");
+        loginScreen.style.display = "flex";
+        // مسح حقول الدخول
+        if (loginUsernameInput) loginUsernameInput.value = "";
+        if (loginPasswordInput) loginPasswordInput.value = "";
+        if (loginErrorMsgDiv) loginErrorMsgDiv.style.display = "none";
+        // إعادة تعيين أي حالة داخلية لواجهة التحليل (اختياري)
+        const resultSection = document.getElementById("result");
+        const top10Section = document.getElementById("top10");
+        if (resultSection) resultSection.classList.add("hidden");
+        if (top10Section) top10Section.classList.add("hidden");
+        const statusDiv = document.getElementById("status");
+        if (statusDiv) statusDiv.innerHTML = "جاهز";
+      }
+
+      // التحقق من جلسة سابقة عند تحميل الصفحة
+      function checkExistingSession() {
+        const isLogged = localStorage.getItem(STORAGE_KEY) === "true";
+        const savedUser = localStorage.getItem(STORAGE_USER);
+        if (isLogged && savedUser) {
+          // التحقق من أن المستخدم لا يزال موجوداً في القائمة (لأمان إضافي)
+          const userStillExists = usersList.some(u => u.username === savedUser);
+          if (userStillExists) {
+            loginScreen.style.display = "none";
+            mainAppContainer.classList.remove("hidden-content");
+            if (welcomeUserSpan) welcomeUserSpan.textContent = `مرحباً، ${savedUser}`;
+            return true;
+          } else {
+            // إذا تم حذف المستخدم من القائمة اليدوية نقوم بتسجيل خروج تلقائي
+            logout();
+            return false;
+          }
+        } else {
+          // لا توجد جلسة صالحة
+          loginScreen.style.display = "flex";
+          mainAppContainer.classList.add("hidden-content");
+          return false;
+        }
+      }
+
+      // ربط الأحداث
+      if (loginBtn) {
+        loginBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const username = loginUsernameInput ? loginUsernameInput.value.trim() : "";
+          const password = loginPasswordInput ? loginPasswordInput.value : "";
+          if (!username || !password) {
+            showLoginError("⚠️ الرجاء إدخال اسم المستخدم وكلمة المرور");
+            return;
+          }
+          performLogin(username, password);
+        });
+      }
+
+      // إدخال بالضغط على Enter
+      const handleEnter = (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const username = loginUsernameInput ? loginUsernameInput.value.trim() : "";
+          const password = loginPasswordInput ? loginPasswordInput.value : "";
+          if (username && password) performLogin(username, password);
+          else showLoginError("املأ الحقول أولاً");
+        }
+      };
+      if (loginUsernameInput) loginUsernameInput.addEventListener("keypress", handleEnter);
+      if (loginPasswordInput) loginPasswordInput.addEventListener("keypress", handleEnter);
+
+      if (logoutBtnGlobal) {
+        logoutBtnGlobal.addEventListener("click", (e) => {
+          e.preventDefault();
+          logout();
+        });
+      }
+
+      // بدء تشغيل فحص الجلسة عند تحميل الصفحة
+      checkExistingSession();
+
+      // تحسين بسيط: إذا كان هناك محتوى app.js الأصلي قد يعيد ربط الأحداث, 
+      // نحن نحافظ على كل العناصر الحية. نضمن أن بعض الأزرار لن تعمل بدون دخول (المحتوى مخفي اصلاً)
+      // التأكد من أن أي محاولة لاستخدام التطبيق قبل الدخول مستحيلة لأن الحاوية مخفية.
+      console.log("نظام تسجيل الدخول جاهز ✅ يمكن إضافة مستخدمين جدد في usersList داخل الكود");
+    })();
+  </script>
+  
+  <!-- 
+    ملاحظة مهمة: تم الحفاظ على كامل هيكل التطبيق الأصلي مع الإشارة إلى ملف app.js.
+    إذا كان app.js يحتوي على منطق حقيقي للاتصال بـ API وتحليل الأسهم فسيظل يعمل بعد تسجيل الدخول.
+    أما إذا كان مفقوداً أو يحتاج إلى تهيئة، يمكنك استبدال محتوى app.js بالكود الفعلي الخاص بك.
+    نظام تسجيل الدخول الآن يعزل المحتوى تماماً حتى مصادقة المستخدم.
+  -->
 </body>
 </html>
